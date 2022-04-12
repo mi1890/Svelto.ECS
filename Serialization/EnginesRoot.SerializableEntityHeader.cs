@@ -1,19 +1,17 @@
-using Svelto.DataStructures;
-
 namespace Svelto.ECS
 {
     public partial class EnginesRoot
     {
-        struct SerializableEntityHeader
+        readonly struct SerializableEntityHeader
         {
             public readonly uint descriptorHash;
-            public readonly byte entityStructsCount;
+            public readonly byte entityComponentsCount;
 
             const uint SIZE = 4 + 4 + 4 + 1;
 
-            internal SerializableEntityHeader(uint descriptorHash_, EGID egid_, byte entityStructsCount_)
+            internal SerializableEntityHeader(uint descriptorHash_, EGID egid_, byte entityComponentsCount_)
             {
-                entityStructsCount = entityStructsCount_;
+                entityComponentsCount = entityComponentsCount_;
                 descriptorHash = descriptorHash_;
                 egid = egid_;
             }
@@ -38,14 +36,14 @@ namespace Svelto.ECS
                      | serializationData.data[serializationData.dataPos++] << 16
                      | serializationData.data[serializationData.dataPos++] << 24);
 
-                entityStructsCount = serializationData.data[serializationData.dataPos++];
+                entityComponentsCount = serializationData.data[serializationData.dataPos++];
 
-                egid = new EGID(entityID, new ExclusiveGroup.ExclusiveGroupStruct(groupID));
+                egid = new EGID(entityID, new ExclusiveGroupStruct(groupID));
             }
 
             internal void Copy(ISerializationData serializationData)
             {
-                serializationData.data.ExpandBy(SIZE);
+                serializationData.data.IncrementCountBy(SIZE);
 
                 // Splitting the descriptorHash_ (uint, 32 bit) into four bytes.
                 serializationData.data[serializationData.dataPos++] = (byte) (descriptorHash & 0xff);
@@ -61,13 +59,13 @@ namespace Svelto.ECS
                 serializationData.data[serializationData.dataPos++] = (byte) ((entityID >> 24) & 0xff);
 
                 // Splitting the groupID (uint, 32 bit) into four bytes.
-                uint groupID = egid.groupID;
+                var groupID = egid.groupID.ToIDAndBitmask();
                 serializationData.data[serializationData.dataPos++] = (byte) (groupID & 0xff);
                 serializationData.data[serializationData.dataPos++] = (byte) ((groupID >> 8) & 0xff);
                 serializationData.data[serializationData.dataPos++] = (byte) ((groupID >> 16) & 0xff);
                 serializationData.data[serializationData.dataPos++] = (byte) ((groupID >> 24) & 0xff);
 
-                serializationData.data[serializationData.dataPos++] = entityStructsCount;
+                serializationData.data[serializationData.dataPos++] = entityComponentsCount;
             }
 
             internal readonly EGID egid; //this can't be used safely!
